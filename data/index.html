@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Puls Monitor</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <div class="row">
+        <h1>Puls</h1>
+        <button id="start">10s Messung</button>
+      </div>
+      <div class="value" id="bpm">--</div>
+      <div class="unit">BPM (live)</div>
+      <div class="status" id="status">Warte auf Daten…</div>
+      <canvas id="chart" width="520" height="220"></canvas>
+    </section>
+    <section class="card">
+      <h1>Herzschlag</h1>
+      <canvas id="beatChart" width="520" height="160"></canvas>
+    </section>
+    <section class="card small">
+      <div class="label">Durchschnitt (10s)</div>
+      <div class="raw" id="final">--</div>
+    </section>
+    <section class="card small">
+      <div class="label">RAW IR</div>
+      <div class="raw" id="raw">--</div>
+    </section>
+    <section class="card small">
+      <div class="label">Beat</div>
+      <div class="raw" id="beat">--</div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
