@@ -61,6 +61,7 @@ void appendConfigJson(String &json, const AppSettings &config) {
   json += "\"sensor_sample_interval_ms\":" + String(config.sensorSampleIntervalMs) + ",";
   json += "\"min_beat_interval_ms\":" + String(config.minBeatIntervalMs) + ",";
   json += "\"max_beat_interval_ms\":" + String(config.maxBeatIntervalMs) + ",";
+  json += "\"beat_sensitivity\":" + String(config.beatSensitivity) + ",";
   json += "\"measure_ms\":" + String(config.measureMs) + ",";
   json += "\"sample_interval_ms\":" + String(config.sampleIntervalMs) + ",";
   json += "\"max_measurement_samples\":" + String(config.maxMeasurementSamples) + ",";
@@ -85,6 +86,8 @@ void PulseWebServer::begin() {
   server_.on("/api/config", HTTP_POST, [this]() { handleApiConfigPost(); });
   server_.on("/api/threshold", HTTP_GET, [this]() { handleApiThresholdGet(); });
   server_.on("/api/threshold", HTTP_POST, [this]() { handleApiThresholdPost(); });
+  server_.on("/api/sensitivity", HTTP_GET, [this]() { handleApiSensitivityGet(); });
+  server_.on("/api/sensitivity", HTTP_POST, [this]() { handleApiSensitivityPost(); });
   server_.on("/api/oled", HTTP_GET, [this]() { handleApiOledGet(); });
   server_.on("/api/oled", HTTP_POST, [this]() { handleApiOledPost(); });
   server_.on("/api/start", HTTP_POST, [this]() { handleApiStart(); });
@@ -127,6 +130,11 @@ void PulseWebServer::handleApiPulse() {
   json += ",";
   json += "\"measure_ms\":" + String(config.measureMs) + ",";
   json += "\"sample_interval_ms\":" + String(config.sampleIntervalMs) + ",";
+  json += "\"beat_sensitivity\":" + String(config.beatSensitivity) + ",";
+  json += "\"beat_tolerance_percent\":" +
+          String(static_cast<int>(roundf((0.20f + (static_cast<float>(config.beatSensitivity - 1) *
+                                               (0.30f / 9.0f))) *
+                                              100.0f))) + ",";
   json += "\"raw_final_avg\":" + String(snapshot.rawFinalAvg, 1) + ",";
   json += "\"final_avg\":" + String(snapshot.finalAvg, 1) + ",";
   json += "\"samples\":" + String(snapshot.sampleCount) + ",";
@@ -191,6 +199,8 @@ void PulseWebServer::handleApiConfigPost() {
   candidate.minBeatIntervalMs = unsignedValue;
   if (!parseUnsignedArg(server_, "max_beat_interval_ms", unsignedValue, error)) goto fail;
   candidate.maxBeatIntervalMs = unsignedValue;
+  if (!parseUnsignedArg(server_, "beat_sensitivity", unsignedValue, error)) goto fail;
+  candidate.beatSensitivity = static_cast<uint8_t>(unsignedValue);
   if (!parseUnsignedArg(server_, "measure_ms", unsignedValue, error)) goto fail;
   candidate.measureMs = unsignedValue;
   if (!parseUnsignedArg(server_, "sample_interval_ms", unsignedValue, error)) goto fail;
@@ -272,6 +282,37 @@ void PulseWebServer::handleApiThresholdPost() {
     candidate.rawFingerReleaseThreshold = signedValue;
   }
 
+  if (!settings_.update(candidate, error)) {
+    server_.send(400, "text/plain", error);
+    return;
+  }
+
+  server_.send(200, "text/plain", "ok");
+}
+
+void PulseWebServer::handleApiSensitivityGet() {
+  const AppSettings &config = settings_.current();
+  const int tolerancePercent = static_cast<int>(
+      roundf((0.20f + (static_cast<float>(config.beatSensitivity - 1) * (0.30f / 9.0f))) * 100.0f));
+
+  String json = "{";
+  json += "\"beat_sensitivity\":" + String(config.beatSensitivity) + ",";
+  json += "\"beat_tolerance_percent\":" + String(tolerancePercent);
+  json += "}";
+  server_.send(200, "application/json", json);
+}
+
+void PulseWebServer::handleApiSensitivityPost() {
+  AppSettings candidate = settings_.current();
+  String error;
+  unsigned long unsignedValue = 0;
+
+  if (!parseUnsignedArg(server_, "beat_sensitivity", unsignedValue, error)) {
+    server_.send(400, "text/plain", error);
+    return;
+  }
+
+  candidate.beatSensitivity = static_cast<uint8_t>(unsignedValue);
   if (!settings_.update(candidate, error)) {
     server_.send(400, "text/plain", error);
     return;

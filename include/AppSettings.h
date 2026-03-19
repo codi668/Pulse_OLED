@@ -24,6 +24,7 @@ struct AppSettings {
   unsigned long sensorSampleIntervalMs = AppConfig::kSensorSampleIntervalMs;
   unsigned long minBeatIntervalMs = AppConfig::kMinBeatIntervalMs;
   unsigned long maxBeatIntervalMs = AppConfig::kMaxBeatIntervalMs;
+  uint8_t beatSensitivity = AppConfig::kBeatSensitivity;
   unsigned long measureMs = AppConfig::kMeasureMs;
   unsigned long sampleIntervalMs = AppConfig::kSampleIntervalMs;
   uint16_t maxMeasurementSamples = AppConfig::kMaxMeasurementSamples;

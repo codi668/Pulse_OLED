@@ -39,11 +39,13 @@ class PulseMonitor {
   void finishMeasurement();
 
   AppSettingsStore &settings_;
+  TwoWire *wire_ = nullptr;
   MAX30105 sensor_;
   uint16_t rates_[AppSettingsStore::kMaxRateSize] = {};
   byte rateSpot_ = 0;
   byte ratesFilled_ = 0;
   unsigned long lastBeatMs_ = 0;
+  unsigned long lastSensorSampleMs_ = 0;
   float bpm_ = 0.0f;
   float samples_[AppSettingsStore::kMaxMeasurementSamplesLimit] = {};
   PulseSnapshot snapshot_;

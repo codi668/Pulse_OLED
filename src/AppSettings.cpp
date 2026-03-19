@@ -116,6 +116,10 @@ bool AppSettingsStore::validate(const AppSettings &candidate, String &error) con
     error = "max_beat_interval_ms darf hoechstens 10000 sein";
     return false;
   }
+  if (candidate.beatSensitivity < 1 || candidate.beatSensitivity > 10) {
+    error = "beat_sensitivity muss zwischen 1 und 10 liegen";
+    return false;
+  }
   if (candidate.measureMs < 1000 || candidate.measureMs > 120000) {
     error = "measure_ms muss zwischen 1000 und 120000 liegen";
     return false;
@@ -195,6 +199,8 @@ void AppSettingsStore::load() {
       preferences_.getULong("min_beat_interval_ms", settings_.minBeatIntervalMs);
   settings_.maxBeatIntervalMs =
       preferences_.getULong("max_beat_interval_ms", settings_.maxBeatIntervalMs);
+  settings_.beatSensitivity =
+      preferences_.getUChar("beat_sensitivity", settings_.beatSensitivity);
   settings_.measureMs = preferences_.getULong("measure_ms", settings_.measureMs);
   settings_.sampleIntervalMs = preferences_.getULong("sample_interval_ms", settings_.sampleIntervalMs);
   settings_.maxMeasurementSamples =
@@ -213,12 +219,24 @@ void AppSettingsStore::load() {
       preferences_.getULong("beat_animation_frame_ms", settings_.beatAnimationFrameMs);
   settings_.oledWidth = preferences_.getUChar("oled_width", settings_.oledWidth);
 
+  bool migratedLegacySensorTiming = false;
+  if (settings_.sensorSampleRate == 100 && settings_.sensorSampleIntervalMs == 10) {
+    settings_.sensorSampleRate = AppConfig::kSensorSampleRate;
+    settings_.sensorSampleIntervalMs = AppConfig::kSensorSampleIntervalMs;
+    migratedLegacySensorTiming = true;
+  }
+
   String error;
   if (!validate(settings_, error)) {
     settings_ = defaults();
     if (ready_) {
       save();
     }
+    return;
+  }
+
+  if (migratedLegacySensorTiming && ready_) {
+    save();
   }
 }
 
@@ -242,6 +260,7 @@ void AppSettingsStore::save() {
   preferences_.putULong("sensor_sample_interval_ms", settings_.sensorSampleIntervalMs);
   preferences_.putULong("min_beat_interval_ms", settings_.minBeatIntervalMs);
   preferences_.putULong("max_beat_interval_ms", settings_.maxBeatIntervalMs);
+  preferences_.putUChar("beat_sensitivity", settings_.beatSensitivity);
   preferences_.putULong("measure_ms", settings_.measureMs);
   preferences_.putULong("sample_interval_ms", settings_.sampleIntervalMs);
   preferences_.putUShort("max_measurement_samples", settings_.maxMeasurementSamples);

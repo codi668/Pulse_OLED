@@ -38,11 +38,17 @@ void resetHeartRateFilterState() {
   }
 }
 
+float beatToleranceFraction(uint8_t sensitivity) {
+  const uint8_t clamped = sensitivity < 1 ? 1 : (sensitivity > 10 ? 10 : sensitivity);
+  return 0.20f + (static_cast<float>(clamped - 1) * (0.30f / 9.0f));
+}
+
 }  // namespace
 
 PulseMonitor::PulseMonitor(AppSettingsStore &settings) : settings_(settings) {}
 
 bool PulseMonitor::begin(TwoWire &wire) {
+  wire_ = &wire;
   if (!sensor_.begin(wire, I2C_SPEED_FAST)) {
     return false;
   }
@@ -67,13 +73,44 @@ void PulseMonitor::update(unsigned long nowMs) {
   reloadConfigIfNeeded();
   snapshot_.fingerThreshold = activeFingerThreshold();
 
-  const long rawIr = static_cast<long>(sensor_.getIR());
-  if (rawIr <= 0) {
-    return;
-  }
-  processSensorSample(rawIr, nowMs);
-
   const AppSettings &config = settings_.current();
+  if (wire_ != nullptr) {
+    wire_->setClock(I2C_SPEED_FAST);
+  }
+
+  const uint16_t newSamples = sensor_.check();
+  if (newSamples > 0) {
+    const unsigned long sampleIntervalMs =
+        config.sensorSampleIntervalMs > 0 ? config.sensorSampleIntervalMs : 1;
+    unsigned long sampleMs = 0;
+
+    if (lastSensorSampleMs_ > 0) {
+      sampleMs = lastSensorSampleMs_ + sampleIntervalMs;
+    }
+
+    unsigned long backlogStartMs = nowMs;
+    if (newSamples > 1) {
+      const unsigned long backlogSpan = sampleIntervalMs * static_cast<unsigned long>(newSamples - 1);
+      backlogStartMs = backlogSpan < nowMs ? nowMs - backlogSpan : 0;
+    }
+
+    if (sampleMs == 0 || sampleMs < backlogStartMs) {
+      sampleMs = backlogStartMs;
+    }
+
+    while (sensor_.available()) {
+      const long rawIr = static_cast<long>(sensor_.getFIFOIR());
+      sensor_.nextSample();
+
+      if (rawIr > 0) {
+        processSensorSample(rawIr, sampleMs);
+        lastSensorSampleMs_ = sampleMs;
+      }
+
+      sampleMs += sampleIntervalMs;
+    }
+  }
+
   if (snapshot_.calibrationActive && nowMs - snapshot_.calibrationStartMs >= config.calibrationMs) {
     finishCalibration();
   }
@@ -108,6 +145,7 @@ void PulseMonitor::startCalibration(unsigned long nowMs) {
   snapshot_.instantBpm = 0.0f;
   snapshot_.lastBeatMs = 0;
   calibrationLastSampleMs_ = 0;
+  lastSensorSampleMs_ = 0;
   calibrationSum_ = 0;
   calibrationSamples_ = 0;
   fingerOnSamples_ = 0;
@@ -271,9 +309,10 @@ void PulseMonitor::registerBeat(unsigned long sampleMs) {
     return;
   }
 
+  const float tolerance = beatToleranceFraction(config.beatSensitivity);
   if (snapshot_.avgBpm > 0.0f &&
-      (beatsPerMinute > snapshot_.avgBpm * 1.35f ||
-       beatsPerMinute < snapshot_.avgBpm * 0.65f)) {
+      (beatsPerMinute > snapshot_.avgBpm * (1.0f + tolerance) ||
+       beatsPerMinute < snapshot_.avgBpm * (1.0f - tolerance))) {
     return;
   }
 
@@ -331,6 +370,7 @@ void PulseMonitor::applySensorConfig() {
   snapshot_.avgBpm = 0.0f;
   snapshot_.instantBpm = 0.0f;
   snapshot_.lastBeatMs = 0;
+  lastSensorSampleMs_ = 0;
   bpm_ = 0.0f;
   beatEventPending_ = false;
   resetMeasurement();
@@ -441,14 +481,22 @@ void PulseMonitor::resetBeatDetectionState() {
 }
 
 void PulseMonitor::finishCalibration() {
-  snapshot_.calibrationActive = false;
-  snapshot_.calibrationDone = calibrationSamples_ > 0;
-  snapshot_.calibrationStartMs = 0;
-  snapshot_.calibrationBaseline =
+  const AppSettings &config = settings_.current();
+  const long baseline =
       calibrationSamples_ > 0 ? static_cast<long>(calibrationSum_ / calibrationSamples_) : 0;
+  const bool invalidBaseline =
+      baseline > 0 && baseline > static_cast<long>(config.rawFingerThreshold) * 4L;
+
+  snapshot_.calibrationActive = false;
+  snapshot_.calibrationDone = calibrationSamples_ > 0 && !invalidBaseline;
+  snapshot_.calibrationStartMs = 0;
+  snapshot_.calibrationBaseline = invalidBaseline ? 0 : baseline;
   if (snapshot_.calibrationBaseline > 0) {
     ambientIr_ = snapshot_.calibrationBaseline;
     ambientIrReady_ = true;
+  } else {
+    ambientIr_ = 0;
+    ambientIrReady_ = false;
   }
   snapshot_.fingerThreshold = activeFingerThreshold();
   snapshot_.calibratedIr = calibratedIr(snapshot_.rawIr);
@@ -459,6 +507,7 @@ void PulseMonitor::finishCalibration() {
   bpm_ = 0.0f;
   beatEventPending_ = false;
   calibrationLastSampleMs_ = 0;
+  lastSensorSampleMs_ = 0;
   calibrationSum_ = 0;
   calibrationSamples_ = 0;
   fingerOnSamples_ = 0;

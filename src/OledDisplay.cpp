@@ -26,6 +26,8 @@ bool OledDisplay::begin(TwoWire &wire) {
 
   selectDriver(config.oledDriverMode);
   oled_->setI2CAddress(address_ << 1);
+  oled_->setBusClock(100000);
+  delay(50);
   oled_->begin();
   oled_->setPowerSave(0);
   oled_->clearBuffer();

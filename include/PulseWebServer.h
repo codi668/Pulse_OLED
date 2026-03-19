@@ -18,6 +18,8 @@ class PulseWebServer {
   void handleApiConfigPost();
   void handleApiThresholdGet();
   void handleApiThresholdPost();
+  void handleApiSensitivityGet();
+  void handleApiSensitivityPost();
   void handleApiOledGet();
   void handleApiOledPost();
   void handleApiStart();

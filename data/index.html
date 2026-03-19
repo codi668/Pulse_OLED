@@ -9,18 +9,52 @@
 <body>
   <main class="shell">
     <section class="panel hero">
-      <div class="hero-head">
-        <div>
-          <p class="eyebrow">MAX30102 + OLED</p>
-          <h1>Puls live im Browser und auf dem Display</h1>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Pulse Deck</p>
+          <h1>Pulsstation fuer Sensor, Browser und OLED.</h1>
+          <p class="hero-text">
+            Livewerte, Signalqualitaet, 10s-Messung und eine direkte Einordnung des gemessenen
+            Pulses in einer kompakten Oberflaeche.
+          </p>
         </div>
-        <div class="actions">
-          <button id="startMeasurement">10s Messung starten</button>
-          <button id="startCalibration" class="secondary">Sensor kalibrieren</button>
+
+        <div class="hero-side">
+          <div class="pill-row">
+            <span class="pill" id="connectionBadge" data-tone="neutral">Verbindung: --</span>
+            <span class="pill" id="fingerBadge" data-tone="neutral">Finger: --</span>
+            <span class="pill" id="rangeBadge" data-tone="neutral">Bereich: --</span>
+          </div>
+
+          <div class="action-card">
+            <div class="action-copy">
+              <div class="section-title">Steuerung</div>
+              <p>Kalibriere zuerst ohne Finger. Starte danach die 10s-Messung mit ruhigem Kontakt.</p>
+            </div>
+            <div class="actions">
+              <button id="startMeasurement">10s Messung starten</button>
+              <button id="startCalibration" class="secondary">Sensor kalibrieren</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <p class="status" id="status">Verbinde mit dem Sensor...</p>
+      <div class="status-strip">
+        <div class="status-block">
+          <div class="section-title">Live-Status</div>
+          <p class="status" id="status">Verbinde mit dem Sensor...</p>
+        </div>
+
+        <div class="progress-card">
+          <div class="progress-head">
+            <span>Messfenster</span>
+            <strong id="measureMeta">bereit</strong>
+          </div>
+          <div class="measure-track">
+            <div class="measure-fill" id="measureFill" data-tone="neutral"></div>
+          </div>
+        </div>
+      </div>
 
       <div class="stats">
         <article class="stat">
@@ -28,45 +62,133 @@
           <strong class="stat-value" id="instantBpm">--</strong>
           <span class="stat-unit">BPM aktuell</span>
         </article>
-        <article class="stat accent">
+
+        <article class="stat highlight">
           <span class="stat-label">Gemittelt</span>
           <strong class="stat-value" id="avgBpm">--</strong>
           <span class="stat-unit">gleitender Mittelwert</span>
         </article>
+
         <article class="stat">
           <span class="stat-label" id="finalLabel">10s Messung</span>
           <strong class="stat-value" id="finalAvg">--</strong>
           <span class="stat-unit">Messungs-Mittel</span>
         </article>
-      </div>
 
-      <div class="chart-wrap">
-        <div class="section-title">Realtime-Graph der 10s-Messung</div>
-        <canvas id="chart" width="860" height="260"></canvas>
+        <article class="stat signal-stat">
+          <span class="stat-label">Signal</span>
+          <strong class="stat-value" id="signalQuality">--</strong>
+          <span class="stat-unit" id="signalQualityLabel">Qualitaet</span>
+        </article>
       </div>
     </section>
 
-    <section class="grid">
+    <section class="dashboard">
+      <section class="panel wide">
+        <div class="panel-head">
+          <div>
+            <div class="section-title">10s Verlauf</div>
+            <p class="panel-copy compact">
+              Der Graph zeigt die fortlaufenden BPM-Werte waehrend einer aktiven Messung.
+            </p>
+          </div>
+          <div class="meta-box">
+            <span>Letztes Update</span>
+            <strong id="lastUpdate">--</strong>
+          </div>
+        </div>
+        <canvas id="chart" width="860" height="260"></canvas>
+      </section>
+
       <section class="panel">
-        <div class="section-title">Puls-Threshold</div>
-        <p class="panel-copy">
-          Diese Offsets werden auf das aktuelle Leerlauf-Signal addiert. Hoeher = strengere
-          Fingererkennung.
+        <div class="panel-head">
+          <div>
+            <div class="section-title">Aktuelle Einordnung</div>
+            <p class="panel-copy compact">
+              Die Deutung ist eine Orientierung fuer Ruhe und Alltagsmessung, keine Diagnose.
+            </p>
+          </div>
+          <span class="meaning-chip" id="meaningChip" data-tone="neutral">Noch keine Daten</span>
+        </div>
+        <h2 class="meaning-title" id="meaningTitle">Warte auf stabile Messung</h2>
+        <p class="meaning-copy" id="meaningCopy">
+          Sobald ein plausibler Puls erkannt ist, wird hier eingeordnet, was der aktuelle Bereich
+          ungefaehr bedeutet.
         </p>
-        <div class="form-grid">
-          <label class="field">
-            <span>Finger an</span>
-            <input id="detectOffset" type="number" min="1" step="1" />
-          </label>
-          <label class="field">
-            <span>Finger aus</span>
-            <input id="releaseOffset" type="number" min="1" step="1" />
-          </label>
+        <p class="meaning-hint" id="meaningHint">
+          Die Bewertung haengt immer von Ruhe, Bewegung, Alter, Fitness und Situation ab.
+        </p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Pulsbereiche</div>
+        <p class="panel-copy compact">
+          Diese Bereiche helfen beim schnellen Lesen der Werte. Aktivitaet und Training koennen
+          die Bedeutung deutlich verschieben.
+        </p>
+        <div class="range-list">
+          <article class="range-card" data-zone="very-low">
+            <span class="range-bpm">unter 50 BPM</span>
+            <strong>Sehr niedrig</strong>
+            <p>Kann in tiefer Ruhe oder bei trainierten Personen vorkommen.</p>
+          </article>
+          <article class="range-card" data-zone="low">
+            <span class="range-bpm">50 bis 59 BPM</span>
+            <strong>Ruhig</strong>
+            <p>Oft entspannter Ruhebereich, besonders bei guter Fitness.</p>
+          </article>
+          <article class="range-card" data-zone="normal">
+            <span class="range-bpm">60 bis 84 BPM</span>
+            <strong>Typischer Ruhebereich</strong>
+            <p>Hauefiger Bereich bei entspanntem Sitzen oder ruhigem Stehen.</p>
+          </article>
+          <article class="range-card" data-zone="elevated">
+            <span class="range-bpm">85 bis 99 BPM</span>
+            <strong>Erhoeht</strong>
+            <p>Kann durch Stress, Bewegung, Kaffee oder unruhigen Kontakt entstehen.</p>
+          </article>
+          <article class="range-card" data-zone="high">
+            <span class="range-bpm">ab 100 BPM</span>
+            <strong>Deutlich erhoeht</strong>
+            <p>Hauefig bei Aktivitaet. In Ruhe sollte der Wert erneut geprueft werden.</p>
+          </article>
         </div>
-        <div class="actions left">
-          <button id="saveThreshold">Threshold speichern</button>
+      </section>
+
+      <section class="panel wide">
+        <div class="panel-head">
+          <div>
+            <div class="section-title">Beat-Verlauf</div>
+            <p class="panel-copy compact">
+              Jede Spitze steht fuer einen erkannten Herzschlag in den letzten zehn Sekunden.
+            </p>
+          </div>
+          <div class="meta-box">
+            <span>Signalqualitaet</span>
+            <strong id="qualitySummary">--</strong>
+          </div>
         </div>
-        <p class="subtle" id="thresholdInfo">Aktive Schwelle: --</p>
+        <canvas id="beatChart" width="860" height="180"></canvas>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Signalanalyse</div>
+        <p class="panel-copy compact">
+          Diese Anzeige schaetzt, wie sauber der Fingerkontakt aktuell fuer die Erkennung ist.
+        </p>
+        <div class="quality-track">
+          <div class="quality-fill" id="qualityBarFill" data-tone="neutral"></div>
+        </div>
+        <div class="quality-grid">
+          <article class="quality-card">
+            <span>Bewertung</span>
+            <strong id="qualityState">--</strong>
+          </article>
+          <article class="quality-card">
+            <span>Hinweis</span>
+            <strong id="qualityHelp">--</strong>
+          </article>
+        </div>
       </section>
 
       <section class="panel">
@@ -99,9 +221,75 @@
         </div>
       </section>
 
-      <section class="panel wide">
-        <div class="section-title">Beat-Verlauf der letzten 10 Sekunden</div>
-        <canvas id="beatChart" width="860" height="180"></canvas>
+      <section class="panel">
+        <div class="section-title">Messhinweise</div>
+        <ul class="tips-list">
+          <li>Finger locker und mittig auflegen, nicht seitlich kippen.</li>
+          <li>Fuer die Kalibrierung den Sensor frei lassen.</li>
+          <li>Waehle einen gleichmaessigen Druck statt fest zu pressen.</li>
+          <li>Bei zittrigen Werten zuerst Signalqualitaet und Threshold pruefen.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Puls-Threshold</div>
+        <p class="panel-copy">
+          Diese Offsets werden auf das Leerlauf-Signal addiert. Hoeher bedeutet strengere
+          Fingererkennung.
+        </p>
+        <div class="form-grid">
+          <label class="field">
+            <span>Finger an</span>
+            <input id="detectOffset" type="number" min="1" step="1" />
+          </label>
+          <label class="field">
+            <span>Finger aus</span>
+            <input id="releaseOffset" type="number" min="1" step="1" />
+          </label>
+        </div>
+        <div class="actions left">
+          <button id="saveThreshold">Threshold speichern</button>
+        </div>
+        <p class="subtle" id="thresholdInfo">Aktive Schwelle: --</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Puls-Erkennung</div>
+        <p class="panel-copy">
+          Damit stellst du ein, wie streng neue Herzschlaege akzeptiert werden. 1 ist strikt und
+          ruhig, 10 ist empfindlicher.
+        </p>
+        <div class="form-grid single">
+          <label class="field">
+            <span>Schaerfe</span>
+            <input id="beatSensitivity" type="number" min="1" max="10" step="1" />
+          </label>
+        </div>
+        <div class="actions left">
+          <button id="saveSensitivity">Empfindlichkeit speichern</button>
+        </div>
+        <p class="subtle" id="sensitivityInfo">Aktuell: --</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">OLED-Modus</div>
+        <p class="panel-copy">
+          Falls das Display falsch aussieht, kann hier direkt der passende Treiber aktiviert
+          werden.
+        </p>
+        <label class="field">
+          <span>Treiber</span>
+          <select id="oledMode">
+            <option value="0">SSD1306 128x64</option>
+            <option value="1">SSD1306 ALT0 128x64</option>
+            <option value="2">SH1106 128x64</option>
+            <option value="3">SSD1306 128x32</option>
+          </select>
+        </label>
+        <div class="actions left">
+          <button id="saveOledMode">OLED-Modus speichern</button>
+        </div>
+        <p class="subtle" id="oledInfo">Aktueller Modus: --</p>
       </section>
     </section>
   </main>
