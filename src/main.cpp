@@ -4,18 +4,24 @@
 #include <Wire.h>
 
 #include "AppConfig.h"
+#include "AppSettings.h"
 #include "OledDisplay.h"
 #include "PulseMonitor.h"
 #include "PulseWebServer.h"
 
 namespace {
 
-PulseMonitor pulseMonitor;
-OledDisplay oledDisplay;
-PulseWebServer webServer(pulseMonitor);
+AppSettingsStore appSettings;
+PulseMonitor pulseMonitor(appSettings);
+OledDisplay oledDisplay(appSettings);
+PulseWebServer webServer(pulseMonitor, appSettings);
 
 String connectWifi() {
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP("ESP32C3-PULSE");
+  Serial.print("AP aktiv. IP: ");
+  Serial.println(WiFi.softAPIP());
+
   WiFi.begin(AppConfig::kWifiSsid, AppConfig::kWifiPass);
   Serial.print("Verbinde mit WLAN");
 
@@ -27,14 +33,12 @@ String connectWifi() {
   Serial.println();
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("Verbunden. IP: ");
+    Serial.print("Verbunden. WLAN-IP: ");
     Serial.println(WiFi.localIP());
     return WiFi.localIP().toString();
   }
 
-  Serial.println("WLAN nicht verbunden. Starte AP: ESP32C3-PULSE");
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP("ESP32C3-PULSE-ameli");
+  Serial.println("WLAN nicht verbunden. Nutze Access Point ESP32C3-PULSE");
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
   return WiFi.softAPIP().toString();
@@ -47,17 +51,21 @@ void initFileSystem() {
 }
 
 void printDebug(const PulseSnapshot &snapshot) {
-  Serial.print("IR: ");
+  Serial.print("IR=");
   Serial.print(snapshot.rawIr);
-  Serial.print("  BPM: ");
-  Serial.print(pulseMonitor.instantBpm(), 1);
-  Serial.print("  AVG: ");
+  Serial.print("  INST=");
+  Serial.print(snapshot.instantBpm, 1);
+  Serial.print("  AVG=");
   Serial.print(snapshot.avgBpm, 1);
-  Serial.print("  ACTIVE: ");
+  Serial.print("  TH=");
+  Serial.print(snapshot.fingerThreshold);
+  Serial.print("  FINGER=");
+  Serial.print(snapshot.fingerPresent ? "1" : "0");
+  Serial.print("  ACTIVE=");
   Serial.print(snapshot.measurementActive ? "1" : "0");
-  Serial.print("  DONE: ");
+  Serial.print("  DONE=");
   Serial.print(snapshot.measurementDone ? "1" : "0");
-  Serial.print("  FINAL: ");
+  Serial.print("  FINAL=");
   Serial.println(snapshot.finalAvg, 1);
 }
 
@@ -66,6 +74,8 @@ void printDebug(const PulseSnapshot &snapshot) {
 void setup() {
   Serial.begin(115200);
   delay(200);
+
+  appSettings.begin();
 
   // XIAO ESP32C3: SDA=D4(GPIO6), SCL=D5(GPIO7)
   Wire.begin(SDA, SCL);
@@ -80,6 +90,8 @@ void setup() {
     }
   }
 
+  pulseMonitor.startCalibration(millis());
+
   oledDisplay.begin(Wire);
   oledDisplay.setNetworkLabel(networkLabel);
   oledDisplay.render(pulseMonitor.snapshot(), millis(), true);
@@ -87,12 +99,18 @@ void setup() {
 }
 
 void loop() {
+  static unsigned long lastDebugMs = 0;
   const unsigned long nowMs = millis();
+
   pulseMonitor.update(nowMs);
 
   const PulseSnapshot snapshot = pulseMonitor.snapshot();
-  printDebug(snapshot);
+  if (nowMs - lastDebugMs >= appSettings.current().debugIntervalMs) {
+    printDebug(snapshot);
+    lastDebugMs = nowMs;
+  }
+
   webServer.handleClient();
   oledDisplay.render(snapshot, nowMs);
-  delay(20);
+  delay(1);
 }

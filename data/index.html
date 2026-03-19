@@ -3,38 +3,109 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Puls Monitor</title>
+  <title>Pulsstation</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <main class="wrap">
-    <section class="card">
-      <div class="row">
-        <h1>Puls</h1>
-        <button id="start">10s Messung</button>
+  <main class="shell">
+    <section class="panel hero">
+      <div class="hero-head">
+        <div>
+          <p class="eyebrow">MAX30102 + OLED</p>
+          <h1>Puls live im Browser und auf dem Display</h1>
+        </div>
+        <div class="actions">
+          <button id="startMeasurement">10s Messung starten</button>
+          <button id="startCalibration" class="secondary">Sensor kalibrieren</button>
+        </div>
       </div>
-      <div class="value" id="bpm">--</div>
-      <div class="unit">BPM (live)</div>
-      <div class="status" id="status">Warte auf Daten…</div>
-      <canvas id="chart" width="520" height="220"></canvas>
+
+      <p class="status" id="status">Verbinde mit dem Sensor...</p>
+
+      <div class="stats">
+        <article class="stat">
+          <span class="stat-label">Gemessen</span>
+          <strong class="stat-value" id="instantBpm">--</strong>
+          <span class="stat-unit">BPM aktuell</span>
+        </article>
+        <article class="stat accent">
+          <span class="stat-label">Gemittelt</span>
+          <strong class="stat-value" id="avgBpm">--</strong>
+          <span class="stat-unit">gleitender Mittelwert</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label" id="finalLabel">10s Messung</span>
+          <strong class="stat-value" id="finalAvg">--</strong>
+          <span class="stat-unit">Messungs-Mittel</span>
+        </article>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="section-title">Realtime-Graph der 10s-Messung</div>
+        <canvas id="chart" width="860" height="260"></canvas>
+      </div>
     </section>
-    <section class="card">
-      <h1>Herzschlag</h1>
-      <canvas id="beatChart" width="520" height="160"></canvas>
-    </section>
-    <section class="card small">
-      <div class="label">Durchschnitt (10s)</div>
-      <div class="raw" id="final">--</div>
-    </section>
-    <section class="card small">
-      <div class="label">RAW IR</div>
-      <div class="raw" id="raw">--</div>
-    </section>
-    <section class="card small">
-      <div class="label">Beat</div>
-      <div class="raw" id="beat">--</div>
+
+    <section class="grid">
+      <section class="panel">
+        <div class="section-title">Puls-Threshold</div>
+        <p class="panel-copy">
+          Diese Offsets werden auf das aktuelle Leerlauf-Signal addiert. Hoeher = strengere
+          Fingererkennung.
+        </p>
+        <div class="form-grid">
+          <label class="field">
+            <span>Finger an</span>
+            <input id="detectOffset" type="number" min="1" step="1" />
+          </label>
+          <label class="field">
+            <span>Finger aus</span>
+            <input id="releaseOffset" type="number" min="1" step="1" />
+          </label>
+        </div>
+        <div class="actions left">
+          <button id="saveThreshold">Threshold speichern</button>
+        </div>
+        <p class="subtle" id="thresholdInfo">Aktive Schwelle: --</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Signal-Details</div>
+        <div class="detail-grid">
+          <article class="detail">
+            <span>RAW IR</span>
+            <strong id="rawIr">--</strong>
+          </article>
+          <article class="detail">
+            <span>Kalibriert</span>
+            <strong id="calibratedIr">--</strong>
+          </article>
+          <article class="detail">
+            <span>Beat</span>
+            <strong id="beatState">--</strong>
+          </article>
+          <article class="detail">
+            <span>Finger</span>
+            <strong id="fingerState">--</strong>
+          </article>
+          <article class="detail">
+            <span>Messung</span>
+            <strong id="measurementState">--</strong>
+          </article>
+          <article class="detail">
+            <span>Kalibrierung</span>
+            <strong id="calibrationState">--</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel wide">
+        <div class="section-title">Beat-Verlauf der letzten 10 Sekunden</div>
+        <canvas id="beatChart" width="860" height="180"></canvas>
+      </section>
     </section>
   </main>
+
   <script src="/app.js"></script>
 </body>
 </html>
