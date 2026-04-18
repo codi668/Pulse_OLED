@@ -32,6 +32,8 @@ static const unsigned long kMeasureMs = 10000;
 static const unsigned long kSampleIntervalMs = 200;
 static const uint16_t kMaxMeasurementSamples = 128;
 static const unsigned long kDebugIntervalMs = 250;
+static const unsigned long kEspNowSendIntervalMs = 100;
+static const unsigned long kEspNowLinkTimeoutMs = 3000;
 
 static const uint8_t kOledAddresses[] = {0x3C, 0x3D};
 static const uint8_t kOledDriverMode = 0;
